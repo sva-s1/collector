@@ -20,7 +20,7 @@ Upstream agent code and full documentation live in the official project:
 ### Project layout
 
 - **Install guide (online Rocky 9)**: end‑to‑end venv + wrapper + systemd + starter `agent.json`  
-  → [`INSTALL.md`](docs/INSTALL.md)
+  → [`docs/INSTALL.md`](docs/INSTALL.md)
 - **Install guide (air‑gapped / no‑internet)**: prep and offline install flow  
   → [`docs/INSTALL-AIRGAPPED.md`](docs/INSTALL-AIRGAPPED.MD)
 - **Upstream agent code, full docs, and changelog**  
