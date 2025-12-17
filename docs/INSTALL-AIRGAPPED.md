@@ -95,7 +95,7 @@ Once the venv install succeeds, **switch back to the main Rocky 9 install guide*
 
 ### 4) Where to go next
 
-- Rocky Linux 9 **online / standard** install steps: see [`INSTALL.md`](../INSTALL.md)
+- Rocky Linux 9 **online / standard** install steps: see [`INSTALL.md`](INSTALL.md)
 - Upstream agent source, docs, and changelog: [`https://github.com/scalyr/scalyr-agent-2`](https://github.com/scalyr/scalyr-agent-2)
 
 
