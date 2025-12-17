@@ -9,6 +9,9 @@
 
 Field guide and install notes for running **Scalyr Agent 2** as the **SentinelOne Collector** on Rocky Linux 9 and similar distros, using a dedicated Python virtualenv and a simple control wrapper.
 
+> [!TIP]
+> If this guide saves you time, please **star the repo on GitHub** so others can find it more easily.
+
 Upstream agent code and full documentation live in the official project:  
 [`https://github.com/scalyr/scalyr-agent-2`](https://github.com/scalyr/scalyr-agent-2)
 
@@ -57,9 +60,3 @@ The **starter `agent.json`** shipped in this repo is configured to:
 - use the **`marketplace-fortinetfortigate-latest`** parser
 
 You can add more `syslog_monitor` entries for additional products (other firewalls, appliances, etc.); just ensure **each monitor uses a unique port (or port pair)** and distinct `message_log` / `parser` values.
-
----
-
-### Suggested short repo description
-
-> Install and operations guide for running Scalyr Agent 2 as the SentinelOne Collector on Rocky Linux 9 (including air‑gapped scenarios).
