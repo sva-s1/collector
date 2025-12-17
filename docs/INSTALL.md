@@ -25,7 +25,7 @@ sudo dnf -y install \
   python3 python3-pip git \
   gcc make python3-devel \
   openssl-devel libffi-devel \
-  nmap-ncat
+  nmap-ncat tcpdump
 ```
 
 Quick sanity (avoids the “Cannot find command 'git'” surprise):
@@ -301,23 +301,7 @@ sudo ss -luntp | egrep ':(514)\b'
 
 ### C) Send test syslog messages with netcat (the “it just works” tests)
 
-Replace `<AGENT_HOST>` with the IP/hostname running the agent.
-
-**TCP 514:**
-
-```bash
-printf '<189>1 2025-12-17T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-17 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc tcp test"\n' \
-  | nc -v <AGENT_HOST> 514
-```
-
-**UDP 514:**
-
-```bash
-printf '<189>1 2025-12-17T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-17 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc udp test"\n' \
-  | nc -u -v <AGENT_HOST> 514
-```
-
-If you’re running the test **on the agent host itself**, use `127.0.0.1`:
+Running the test **on the agent host itself**, using `127.0.0.1` (remove the "`-u`" to use TCP instead of UDP):
 
 ```bash
 printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
