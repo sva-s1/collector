@@ -1,10 +1,5 @@
 # Scalyr Agent 2 (SentinelOne Collector) install from scratch (Rocky Linux 9)
 
-> [!IMPORTANT]
-> **Does this Rocky Linux 9 VM have outbound internet (to `github.com` / `pypi.org`)?**
-> - If **yes**, you can follow this document as‑is (online / standard install).
-> - If **no**, first complete the **Air‑gapped / no‑internet prep** steps in [`docs/INSTALL-AIRGAPPED.md`](INSTALL-AIRGAPPED.md) on a machine that *does* have internet, then return here and continue from **Step 2**.
-
 Installs **scalyr-agent-2** into a Python **venv** under `/opt`, with config + state + logs under **`/etc/scalyr-agent-2/`** (matching your working layout).
 
 This revision uses a **single `scalyr` control wrapper** that:
@@ -13,7 +8,7 @@ This revision uses a **single `scalyr` control wrapper** that:
 - always suppresses the `pkg_resources` deprecation warning
 - supports `scalyr start`, `scalyr stop`, `scalyr status -v`
 - is used by **systemd** (full path) and humans (via `$PATH`)
-- avoids the annoying “already started” style message by treating start/stop as idempotent
+- lets you keep the **API key out of `agent.json`** by reading it from an env file
 
 ---
 
@@ -25,19 +20,20 @@ sudo dnf -y update
 # Practical deps:
 # - git: required because pip installs from a Git tag (pip shells out to git)
 # - build tooling: compile wheels if needed on your platform
-# - nmap-ncat: provides `nc` on Rocky/RHEL
+# - nmap-ncat: provides `nc` for the only tests that always worked
 sudo dnf -y install \
   python3 python3-pip git \
   gcc make python3-devel \
   openssl-devel libffi-devel \
-  nmap-ncat tcpdump
+  nmap-ncat
 ```
 
-Quick sanity (avoids “Cannot find command 'git'” surprises):
+Quick sanity (avoids the “Cannot find command 'git'” surprise):
 
 ```bash
 command -v git
 git --version
+
 command -v nc
 nc -h | head -n 1 || true
 ```
@@ -83,21 +79,48 @@ sudo /opt/scalyr-agent-2/venv/bin/pip install \
 
 ## 3) Sanity check the agent can run
 
+Use the module entrypoint directly (works even if a console script name differs):
+
 ```bash
 sudo /opt/scalyr-agent-2/venv/bin/python -m scalyr_agent.agent_main --help
 ```
 
 ---
 
-## 4) Create your main config (`/etc/scalyr-agent-2/agent.json`)
+## 4) Put secrets in an env file (recommended)
 
-Put your real API key in `api_key`.
-The starter config below is focused on **FortiGate syslog**; you can extend it later with additional `syslog_monitor` blocks for other sources, as long as each listener uses a **unique TCP/UDP port pair** and its own `message_log` / `parser` combination.
+Create `/etc/scalyr-agent-2/scalyr.env` (root-only). This keeps the key out of `agent.json`.
+
+```bash
+sudo tee /etc/scalyr-agent-2/scalyr.env >/dev/null <<'ENV'
+# Required (this is your "Log Write Access" API key)
+SCALYR_API_KEY="REPLACE_ME"
+
+# Optional (only needed if you want to set the server via env instead of JSON)
+# SCALYR_SERVER="https://xdr.us1.sentinelone.net"
+ENV
+
+sudo chmod 600 /etc/scalyr-agent-2/scalyr.env
+sudo chown root:root /etc/scalyr-agent-2/scalyr.env
+```
+
+Load it for your current shell (optional, for immediate testing):
+
+```bash
+set -a
+source /etc/scalyr-agent-2/scalyr.env
+set +a
+```
+
+---
+
+## 5) Create your main config (`/etc/scalyr-agent-2/agent.json`)
+
+Important: **omit** `api_key` here if you want the env var to be used.
 
 ```bash
 sudo tee /etc/scalyr-agent-2/agent.json >/dev/null <<'JSON'
 {
-  "api_key": "keytokensecret",
   "ca_cert_path": "/etc/ssl/certs/ca-bundle.crt",
   "scalyr_server": "https://xdr.us1.sentinelone.net",
   "agent_log_path": "/etc/scalyr-agent-2/log",
@@ -129,13 +152,13 @@ sudo chown root:root /etc/scalyr-agent-2/agent.json
 
 ---
 
-## 5) Create the `scalyr` control wrapper (no `.sh`)
+## 6) Create the `scalyr` control wrapper (no `.sh`)
 
 This wrapper bakes in:
 
-- config path (`-c /etc/scalyr-agent-2/agent.json`)
+- the config path (`-c /etc/scalyr-agent-2/agent.json`)
 - warning suppression (`PYTHONWARNINGS=...`)
-- idempotent `start` / `stop` (quiet when already started / already stopped)
+- loads `/etc/scalyr-agent-2/scalyr.env` so humans + systemd behave the same
 
 ```bash
 sudo tee /opt/scalyr-agent-2/scalyr >/dev/null <<'EOF'
@@ -143,53 +166,47 @@ sudo tee /opt/scalyr-agent-2/scalyr >/dev/null <<'EOF'
 set -euo pipefail
 
 CONFIG="/etc/scalyr-agent-2/agent.json"
+ENVFILE="/etc/scalyr-agent-2/scalyr.env"
 PY="/opt/scalyr-agent-2/venv/bin/python"
-PIDFILE="/etc/scalyr-agent-2/log/agent.pid"
+
+# Load secrets if present (SCALYR_API_KEY, optionally SCALYR_SERVER, etc.)
+if [[ -f "$ENVFILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENVFILE"
+  set +a
+fi
 
 # Suppress the noisy warning:
 # /.../repoze/__init__.py: UserWarning: pkg_resources is deprecated as an API...
 export PYTHONWARNINGS='ignore:pkg_resources is deprecated as an API:UserWarning'
 
-is_running() {
-  [ -f "$PIDFILE" ] || return 1
-  local pid
-  pid="$(cat "$PIDFILE" 2>/dev/null || true)"
-  [ -n "${pid:-}" ] || return 1
-  kill -0 "$pid" 2>/dev/null
-}
+# Optional: quiet "already running" noise on `start`
+if [[ "${1:-}" == "start" ]]; then
+  set +e
+  out="$("$PY" -m scalyr_agent.agent_main -c "$CONFIG" "$@" 2>&1)"
+  rc=$?
+  set -e
+  if echo "$out" | grep -qi "already running"; then
+    exit 0
+  fi
+  if [[ $rc -ne 0 ]]; then
+    echo "$out" >&2
+    exit $rc
+  fi
+  echo "$out"
+  exit 0
+fi
 
-cmd="${1:-}"
-shift || true
-
-case "$cmd" in
-  start)
-    if is_running; then exit 0; fi
-    exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" start
-    ;;
-  stop)
-    if ! is_running; then exit 0; fi
-    exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" stop
-    ;;
-  status)
-    exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" status "$@"
-    ;;
-  *)
-    exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" "$cmd" "$@"
-    ;;
-esac
+exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" "$@"
 EOF
-```
 
-Set permissions:
-
-```bash
 sudo chmod 0755 /opt/scalyr-agent-2/scalyr
 ```
 
-### Put it on PATH (works for `sudo` too)
+### Put it on PATH for humans (and make `sudo scalyr ...` work)
 
-On Rocky/RHEL, `sudo` often uses a restricted PATH (“secure*path”), which may **not** include `/usr/local/bin`.
-So we symlink into `/usr/bin` so both humans \_and* `sudo` can always find it:
+On Rocky, `sudo` often uses a restricted `secure_path` which may **not** include `/usr/local/bin`. The simplest fix is to symlink into `/usr/bin`.
 
 ```bash
 sudo ln -sf /opt/scalyr-agent-2/scalyr /usr/bin/scalyr
@@ -199,7 +216,7 @@ command -v scalyr
 sudo command -v scalyr
 ```
 
-Quick test:
+Try it:
 
 ```bash
 sudo scalyr status -v || true
@@ -207,7 +224,7 @@ sudo scalyr status -v || true
 
 ---
 
-## 6) Open the syslog ports (if using firewalld)
+## 7) Open the syslog ports (if using firewalld)
 
 If this host should accept remote syslog on 514:
 
@@ -219,7 +236,7 @@ sudo firewall-cmd --reload
 
 ---
 
-## 7) systemd service (uses the wrapper)
+## 8) systemd service (uses the wrapper)
 
 Create:
 
@@ -235,10 +252,14 @@ Wants=network-online.target
 [Service]
 Type=forking
 
+# Wrapper already loads /etc/scalyr-agent-2/scalyr.env, but systemd can too (harmless redundancy)
+EnvironmentFile=-/etc/scalyr-agent-2/scalyr.env
+
 ExecStart=/opt/scalyr-agent-2/scalyr start
 ExecStop=/opt/scalyr-agent-2/scalyr stop
+ExecReload=/opt/scalyr-agent-2/scalyr stop && /opt/scalyr-agent-2/scalyr start
 
-# Optional but handy: write the verbose status into the journal after start
+# Helpful: dump verbose agent status into the journal right after starting
 ExecStartPost=/opt/scalyr-agent-2/scalyr status -v
 
 Restart=on-failure
@@ -259,9 +280,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now scalyr-agent-2
 ```
 
+> Note: If you change values in `scalyr.env`, you must restart the service for them to take effect.
+
 ---
 
-## 8) Validate it’s actually working (includes `nc` tests)
+## 9) Validate it’s actually working (includes `nc` tests)
 
 ### A) Service state + verbose agent status
 
@@ -276,22 +299,29 @@ sudo scalyr status -v
 sudo ss -luntp | egrep ':(514)\b'
 ```
 
-### C) Send test syslog messages with netcat (`nc`)
+### C) Send test syslog messages with netcat (the “it just works” tests)
 
-Replace `localhost` with the IP/hostname running the agent as needed.
+Replace `<AGENT_HOST>` with the IP/hostname running the agent.
 
 **TCP 514:**
 
 ```bash
-printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-16 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc tcp test"\n' \
-  | nc -v localhost 514
+printf '<189>1 2025-12-17T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-17 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc tcp test"\n' \
+  | nc -v <AGENT_HOST> 514
 ```
 
 **UDP 514:**
 
 ```bash
-printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-16 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc udp test"\n' \
-  | nc -u -v localhost 514
+printf '<189>1 2025-12-17T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-17 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc udp test"\n' \
+  | nc -u -v <AGENT_HOST> 514
+```
+
+If you’re running the test **on the agent host itself**, use `127.0.0.1`:
+
+```bash
+printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
+  | nc -u -v 127.0.0.1 514
 ```
 
 ### D) Watch logs while you send the tests
@@ -315,9 +345,9 @@ command -v git
 git --version
 ```
 
-### `sudo: scalyr: command not found`
+### `sudo scalyr ...` says command not found
 
-That’s `sudo` secure_path. Fix by symlinking into `/usr/bin`:
+You likely symlinked only into `/usr/local/bin`. Rocky `sudo` can ignore that path. Fix:
 
 ```bash
 sudo ln -sf /opt/scalyr-agent-2/scalyr /usr/bin/scalyr
@@ -339,7 +369,9 @@ sudo command -v scalyr
   sudo tcpdump -ni any port 514
   ```
 
-### Config edits not taking effect
+### Env var changes not taking effect
+
+Environment-aware variables apply only at startup. Restart:
 
 ```bash
 sudo systemctl restart scalyr-agent-2
