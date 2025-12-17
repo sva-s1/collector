@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Does this Rocky Linux 9 VM have outbound internet (to `github.com` / `pypi.org`)?**
 > - If **yes**, you can follow this document as‑is (online / standard install).
-> - If **no**, first complete the **Air‑gapped / no‑internet prep** steps in `docs/install-airgapped.md` on a machine that *does* have internet, then return here and continue from **Step 2**.
+> - If **no**, first complete the **Air‑gapped / no‑internet prep** steps in [`docs/INSTALL-AIRGAPPED.md`](docs/INSTALL-AIRGAPPED.md) on a machine that *does* have internet, then return here and continue from **Step 2**.
 
 Installs **scalyr-agent-2** into a Python **venv** under `/opt`, with config + state + logs under **`/etc/scalyr-agent-2/`** (matching your working layout).
 
