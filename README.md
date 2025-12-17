@@ -5,7 +5,7 @@
 ![Agent](https://img.shields.io/badge/agent-scalyr--agent--2%20v2.2.19%20(Yvette)-4f46e5.svg)
 ![Upstream](https://img.shields.io/badge/upstream-github.com%2Fscalyr%2Fscalyr--agent--2-6366f1.svg)
 
-![SentinelOne Collector overview](images/readme.jpg)
+![SentinelOne Collector overview](images/masterbuilders.jpg)
 
 Field guide and install notes for running **Scalyr Agent 2** as the **SentinelOne Collector** on Rocky Linux 9 and similar distros, using a dedicated Python virtualenv and a simple control wrapper.
 
