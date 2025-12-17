@@ -174,6 +174,8 @@ esac
 EOF
 ```
 
+Set permissions:
+
 ```bash
 sudo chmod 0755 /opt/scalyr-agent-2/scalyr
 ```
