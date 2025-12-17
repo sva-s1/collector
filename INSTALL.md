@@ -1,4 +1,9 @@
-# Scalyr Agent 2 (SentinelOne DataSet) install from scratch (Rocky Linux 9)
+# Scalyr Agent 2 (SentinelOne Collector) install from scratch (Rocky Linux 9)
+
+> [!IMPORTANT]
+> **Does this Rocky Linux 9 VM have outbound internet (to `github.com` / `pypi.org`)?**
+> - If **yes**, you can follow this document as‑is (online / standard install).
+> - If **no**, first complete the **Air‑gapped / no‑internet prep** steps in `docs/install-airgapped.md` on a machine that *does* have internet, then return here and continue from **Step 2**.
 
 Installs **scalyr-agent-2** into a Python **venv** under `/opt`, with config + state + logs under **`/etc/scalyr-agent-2/`** (matching your working layout).
 
@@ -87,6 +92,7 @@ sudo /opt/scalyr-agent-2/venv/bin/python -m scalyr_agent.agent_main --help
 ## 4) Create your main config (`/etc/scalyr-agent-2/agent.json`)
 
 Put your real API key in `api_key`.
+The starter config below is focused on **FortiGate syslog**; you can extend it later with additional `syslog_monitor` blocks for other sources, as long as each listener uses a **unique TCP/UDP port pair** and its own `message_log` / `parser` combination.
 
 ```bash
 sudo tee /etc/scalyr-agent-2/agent.json >/dev/null <<'JSON'
