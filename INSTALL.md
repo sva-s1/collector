@@ -274,14 +274,14 @@ Replace `localhost` with the IP/hostname running the agent as needed.
 
 ```bash
 printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-16 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc tcp test"\n' \
-  | nc -v <AGENT_HOST> 514
+  | nc -v localhost 514
 ```
 
 **UDP 514:**
 
 ```bash
 printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-16 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc udp test"\n' \
-  | nc -u -v <AGENT_HOST> 514
+  | nc -u -v localhost 514
 ```
 
 ### D) Watch logs while you send the tests
