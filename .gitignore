@@ -1,0 +1,6 @@
+.git
+Docs
+.env
+!example.env
+.DS_Store
+.claude
