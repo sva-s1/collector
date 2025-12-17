@@ -268,7 +268,7 @@ sudo ss -luntp | egrep ':(514)\b'
 
 ### C) Send test syslog messages with netcat (`nc`)
 
-Replace `<AGENT_HOST>` with the IP/hostname running the agent.
+Replace `localhost` with the IP/hostname running the agent as needed.
 
 **TCP 514:**
 
@@ -282,20 +282,6 @@ printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12
 ```bash
 printf '<189>1 2025-12-16T00:00:00Z nc-test FortiGate-40F-SVA - - - date=2025-12-16 time=00:00:00 logid=0000000000 type=event subtype=system level=information msg="nc udp test"\n' \
   | nc -u -v <AGENT_HOST> 514
-```
-
-UDP: If you’re running the test **on the agent host itself**, use `127.0.0.1`:
-
-```bash
-printf '<189>1 2025-12-16T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
-  | nc -u -v 127.0.0.1 514
-```
-
-TCP: If you’re running the test **on the agent host itself**, use `127.0.0.1`:
-
-```bash
-printf '<189>1 2025-12-16T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
-  | nc -v 127.0.0.1 514
 ```
 
 ### D) Watch logs while you send the tests
