@@ -65,6 +65,6 @@ The **starter `agent.json`** shipped in this repo is configured to:
 
 - listen for **FortiGate syslog** on **TCP/UDP 514**
 - write messages into `fortigate.log`
-- use the **`marketplace-fortinetfortigate-latest`** parser
+- use the **`marketplace-fortinetfortigate-latest`** [OCSF](https://schema.ocsf.io/) parser
 
 You can add more `syslog_monitor` entries for additional products (other firewalls, appliances, etc.); just ensure **each monitor uses a unique port (or port pair)** and distinct `message_log` / `parser` values.
