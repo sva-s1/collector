@@ -1,6 +1,6 @@
 ## SentinelOne Collector (Scalyr Agent 2)
 
-![Status](https://img.shields.io/badge/status-experimental-orange.svg)
+![Status](https://img.shields.io/badge/status-beta-yellow.svg)
 ![Platform](https://img.shields.io/badge/platform-Rocky%20Linux%209-10b981.svg)
 ![Agent](https://img.shields.io/badge/agent-scalyr--agent--2%20v2.2.19%20(Yvette)-4f46e5.svg)
 ![Upstream](https://img.shields.io/badge/upstream-github.com%2Fscalyr%2Fscalyr--agent--2-6366f1.svg)
