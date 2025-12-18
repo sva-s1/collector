@@ -101,10 +101,10 @@ if [[ ! -x "${PY}" ]]; then
   python3 -m venv "${VENV}"
 fi
 
-"${PIP}" install --upgrade pip setuptools wheel >/dev/null
+"${PIP}" install -q --upgrade pip setuptools wheel >/dev/null
 
 # Installing from Git tag requires git on PATH (already installed above).
-"${PIP}" install "git+https://github.com/scalyr/scalyr-agent-2.git@${TAG}" >/dev/null
+"${PIP}" install -q "git+https://github.com/scalyr/scalyr-agent-2.git@${TAG}" >/dev/null
 
 # Quiet sanity check: validate import (no agent config needed).
 step 4 "Sanity check: Python import (quiet)..."
