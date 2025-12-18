@@ -14,7 +14,7 @@ Field guide and install notes for running **Scalyr Agent 2** as the **SentinelOn
 > In a hurry? Skip the rest and run the **TURBO installer** (TLDR for the rest of us 😄):
 >
 > ```bash
-> sudo dnf -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/05a6c839ea650713892dbc49257dc6f5/raw/turbo-collector-setup.sh" -o /tmp/turbo-collector-setup.sh && sudo bash /tmp/turbo-collector-setup.sh
+> sudo dnf -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/de9927ea3429fa800318860a0d32c4a9/raw/turbo-collector-setup.sh" -o /tmp/turbo-collector-setup.sh && sudo bash /tmp/turbo-collector-setup.sh
 > ```
 
 > [!IMPORTANT]
