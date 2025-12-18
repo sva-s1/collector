@@ -10,6 +10,13 @@ This revision uses a **single `scalyr` control wrapper** that:
 - is used by **systemd** (full path) and humans (via `$PATH`)
 - lets you keep the **API key out of `agent.json`** by reading it from an env file
 
+> [!TIP]
+> Want the TLDR? Run the **TURBO installer**:
+>
+> ```bash
+> sudo dnf -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/05a6c839ea650713892dbc49257dc6f5/raw/turbo-collector-setup.sh" -o /tmp/turbo-collector-setup.sh && sudo bash /tmp/turbo-collector-setup.sh
+> ```
+
 ---
 
 ## 0) Prep (Rocky 9)
@@ -20,7 +27,7 @@ sudo dnf -y update
 # Practical deps:
 # - git: required because pip installs from a Git tag (pip shells out to git)
 # - build tooling: compile wheels if needed on your platform
-# - nmap-ncat: provides `nc` for the only tests that always worked
+# - nmap-ncat: provides `nc` for the tests
 sudo dnf -y install \
   python3 python3-pip git \
   gcc make python3-devel \
@@ -77,13 +84,16 @@ sudo /opt/scalyr-agent-2/venv/bin/pip install \
 
 ---
 
-## 3) Sanity check the agent can run
+## 3) Sanity check (quiet, no warning)
 
-Use the module entrypoint directly (works even if a console script name differs):
+The noisy `pkg_resources` deprecation warning shows up when running the agent CLI directly.
+So at this stage we do a simple **import-only** sanity check.
 
 ```bash
-sudo /opt/scalyr-agent-2/venv/bin/python -m scalyr_agent.agent_main --help
+sudo /opt/scalyr-agent-2/venv/bin/python -c "import scalyr_agent; print('scalyr_agent import: OK')"
 ```
+
+We’ll run the real `scalyr status -v` check **after** the wrapper exists (the wrapper suppresses the warning).
 
 ---
 
@@ -93,10 +103,27 @@ Create `/etc/scalyr-agent-2/scalyr.env` (root-only). This keeps the key out of `
 
 ```bash
 sudo tee /etc/scalyr-agent-2/scalyr.env >/dev/null <<'ENV'
-# Required (this is your "Log Write Access" API key)
+# Required (this is your "Log Access Write" API key)
+#
+# Get your key from: https://community.sentinelone.com/s/article/000006763
+# 1) Log into your Singularity Data Lake console
+# 2) Navigate to Settings > API Keys
+# 3) Generate a "Log Access Write" key
+# 4) Paste it below
 SCALYR_API_KEY="REPLACE_ME"
 
-# Optional (only needed if you want to set the server via env instead of JSON)
+# SentinelOne Regional Endpoint
+# US1 is the default region. For other regions, see:
+# https://community.sentinelone.com/s/article/000004961
+#
+# Common regions:
+#   US1: https://xdr.us1.sentinelone.net
+#   US2: https://xdr.us2.sentinelone.net
+#   EU1: https://xdr.eu1.sentinelone.net
+#   AP1: https://xdr.ap1.sentinelone.net
+#   AP2: https://xdr.ap2.sentinelone.net
+#
+# Optional: set server via env instead of JSON:
 # SCALYR_SERVER="https://xdr.us1.sentinelone.net"
 ENV
 
@@ -216,7 +243,7 @@ command -v scalyr
 sudo command -v scalyr
 ```
 
-Try it:
+Now we can do the **real** sanity check without the warning:
 
 ```bash
 sudo scalyr status -v || true
@@ -301,11 +328,20 @@ sudo ss -luntp | egrep ':(514)\b'
 
 ### C) Send test syslog messages with netcat (the “it just works” tests)
 
-Running the test **on the agent host itself**, using `127.0.0.1` (remove the "`-u`" to use TCP instead of UDP):
+Running the test **on the agent host itself**, using `127.0.0.1`:
+
+**UDP:**
 
 ```bash
 printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
   | nc -u -v 127.0.0.1 514
+```
+
+**TCP:**
+
+```bash
+printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local tcp test"\n' \
+  | nc -v 127.0.0.1 514
 ```
 
 ### D) Watch logs while you send the tests
@@ -314,6 +350,22 @@ printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local 
 sudo tail -n 200 -f /etc/scalyr-agent-2/log/agent.log
 sudo tail -n 200 -f /etc/scalyr-agent-2/log/fortigate.log
 ```
+
+---
+
+## Find your test events in SDL
+
+1) Give it **60+ seconds**  
+2) Go to **Search**  
+3) Choose **XDR view**  
+4) Search:
+
+```text
+logfile = '/etc/scalyr-agent-2/log/fortigate.log'
+```
+
+5) Time range: **Last 10 minutes**  
+6) If empty, switch view to **All Data**
 
 ---
 
@@ -373,4 +425,3 @@ sudo scalyr status -v
 # Restart + immediately show recent logs
 sudo systemctl restart scalyr-agent-2 && sudo journalctl -u scalyr-agent-2 -n 200 --no-pager
 ```
-
