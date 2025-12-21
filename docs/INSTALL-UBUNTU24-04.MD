@@ -1,4 +1,4 @@
-# Scalyr Agent 2 (SentinelOne Collector) install from scratch (Rocky Linux 9)
+# Scalyr Agent 2 (SentinelOne Collector) install from scratch (Ubuntu 24.04 LTS)
 
 Installs **scalyr-agent-2** into a Python **venv** under `/opt`, with config + state + logs under **`/etc/scalyr-agent-2/`** (matching your working layout).
 
@@ -14,28 +14,31 @@ This revision uses a **single `scalyr` control wrapper** that:
 > Want the TLDR? Run the **TURBO installer**:
 >
 > ```bash
-> sudo dnf -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/de9927ea3429fa800318860a0d32c4a9/raw/turbo-collector-setup.sh" -o /tmp/turbo-collector-setup.sh && sudo bash /tmp/turbo-collector-setup.sh
+> sudo apt-get -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/e568ca5c14d1d54099db47c7c4c5c84c/raw/turbo-collector-setup-ubuntu24-04.sh" -o /tmp/turbo-collector-setup-ubuntu24-04.sh && sudo bash /tmp/turbo-collector-setup-ubuntu24-04.sh
 > ```
 
 ---
 
-## 0) Prep (Rocky 9)
+## 0) Prep (Ubuntu 24.04)
 
 ```bash
-sudo dnf -y update
+sudo apt-get update -y
 
 # Practical deps:
 # - git: required because pip installs from a Git tag (pip shells out to git)
 # - build tooling: compile wheels if needed on your platform
-# - nmap-ncat: provides `nc` for the tests
-sudo dnf -y install \
-  python3 python3-pip git \
-  gcc make python3-devel \
-  openssl-devel libffi-devel \
-  nmap-ncat tcpdump
+# - netcat-openbsd: provides `nc` for the tests
+# - jq: optional but useful for API verification
+sudo apt-get install -y \
+  python3 python3-pip python3-venv \
+  git \
+  build-essential python3-dev \
+  libssl-dev libffi-dev \
+  netcat-openbsd tcpdump \
+  jq
 ```
 
-Quick sanity (avoids the “Cannot find command 'git'” surprise):
+Quick sanity (avoids the "Cannot find command 'git'" surprise):
 
 ```bash
 command -v git
@@ -44,6 +47,8 @@ git --version
 command -v nc
 nc -h | head -n 1 || true
 ```
+
+**Note for Ubuntu 24.04**: This install process intentionally pins `pip==23.3.2` in the venv to address a known compatibility issue with `scalyr-agent-2` and the `six`/`six-moves` dependency. The script applies patches to `pyproject.toml` and `setup.py` to ensure a successful install.
 
 ---
 
@@ -72,14 +77,81 @@ sudo chmod 755 /opt/scalyr-agent-2
 
 ## 2) Create a dedicated venv + install from the GitHub release tag
 
+**Important for Ubuntu 24.04**: Due to PEP517/six compatibility issues, we need to:
+
+1. Pin pip to version 23.3.2
+2. Clone the repo and apply patches to `pyproject.toml` and `setup.py`
+3. Install with `--no-use-pep517`
+
 ```bash
 sudo python3 -m venv /opt/scalyr-agent-2/venv
 
-sudo /opt/scalyr-agent-2/venv/bin/pip install --upgrade pip setuptools wheel
+# Pin pip to avoid compatibility issues
+sudo /opt/scalyr-agent-2/venv/bin/pip install --disable-pip-version-check --upgrade "pip==23.3.2" setuptools wheel
 
-# Install from tag
-sudo /opt/scalyr-agent-2/venv/bin/pip install \
-  "git+https://github.com/scalyr/scalyr-agent-2.git@v2.2.19"
+# Install six explicitly
+sudo /opt/scalyr-agent-2/venv/bin/pip install --disable-pip-version-check six
+
+# Clone, patch, and install
+WORKDIR="$(mktemp -d)"
+cd "${WORKDIR}"
+
+git clone https://github.com/scalyr/scalyr-agent-2.git scalyr-agent-2
+cd scalyr-agent-2
+git checkout v2.2.19
+
+# Patch pyproject.toml to include six in build-system requires
+# (This is a simplified version; the full script does more robust patching)
+if [[ -f "pyproject.toml" ]]; then
+  # Add six to build-system requires if not present
+  python3 <<'PY'
+from pathlib import Path
+p = Path("pyproject.toml")
+txt = p.read_text(encoding="utf-8")
+if "six" not in txt:
+    # Simple patch: add six to requires if it's a single-line array
+    import re
+    txt2 = re.sub(
+        r'(requires\s*=\s*\[)(.*?)(\]\s*$)',
+        lambda m: m.group(1) + m.group(2).rstrip() + ', "six"' + m.group(3),
+        txt,
+        count=1,
+        flags=re.MULTILINE
+    )
+    p.write_text(txt2, encoding="utf-8")
+PY
+fi
+
+# Patch setup.py if needed (simplified)
+if [[ -f "setup.py" ]]; then
+  python3 <<'PY'
+from pathlib import Path
+import re
+p = Path("setup.py")
+txt = p.read_text(encoding="utf-8")
+# Patch import line if it exists
+pattern = r"^(\s*)from scalyr_agent.__scalyr__ import SCALYR_VERSION, get_install_root\s*$"
+def repl(m):
+    indent = m.group(1)
+    return indent + "def _read_version():\n" + \
+           indent + "    with open(path.join(path.dirname(__file__), \"VERSION\"), encoding=\"utf-8\") as f:\n" + \
+           indent + "        return f.read().strip()\n" + \
+           indent + "\n" + \
+           indent + "SCALYR_VERSION = _read_version()\n" + \
+           indent + "\n" + \
+           indent + "def get_install_root():\n" + \
+           indent + "    return path.dirname(path.abspath(__file__))\n"
+txt, count = re.subn(pattern, repl, txt, flags=re.M)
+if count > 0:
+    p.write_text(txt, encoding="utf-8")
+PY
+fi
+
+# Install with --no-use-pep517 to avoid PEP517 issues
+sudo /opt/scalyr-agent-2/venv/bin/pip install --disable-pip-version-check --no-use-pep517 .
+
+cd /
+rm -rf "${WORKDIR}"
 ```
 
 ---
@@ -90,10 +162,10 @@ The noisy `pkg_resources` deprecation warning shows up when running the agent CL
 So at this stage we do a simple **import-only** sanity check.
 
 ```bash
-sudo /opt/scalyr-agent-2/venv/bin/python -c "import scalyr_agent; print('scalyr_agent import: OK')"
+sudo /opt/scalyr-agent-2/venv/bin/python -c "import scalyr_agent; import scalyr_agent.agent_main; print('scalyr_agent import: OK')"
 ```
 
-We’ll run the real `scalyr status -v` check **after** the wrapper exists (the wrapper suppresses the warning).
+We'll run the real `scalyr status -v` check **after** the wrapper exists (the wrapper suppresses the warning).
 
 ---
 
@@ -125,6 +197,9 @@ SCALYR_API_KEY="REPLACE_ME"
 #
 # Optional: set server via env instead of JSON:
 # SCALYR_SERVER="https://xdr.us1.sentinelone.net"
+
+# Optional: READ key for API verification
+# SCALYR_READ_API_KEY="your-read-key-here"
 ENV
 
 sudo chmod 600 /etc/scalyr-agent-2/scalyr.env
@@ -148,7 +223,7 @@ Important: **omit** `api_key` here if you want the env var to be used.
 ```bash
 sudo tee /etc/scalyr-agent-2/agent.json >/dev/null <<'JSON'
 {
-  "ca_cert_path": "/etc/ssl/certs/ca-bundle.crt",
+  "ca_cert_path": "/etc/ssl/certs/ca-certificates.crt",
   "scalyr_server": "https://xdr.us1.sentinelone.net",
   "agent_log_path": "/etc/scalyr-agent-2/log",
   "agent_data_path": "/etc/scalyr-agent-2/data",
@@ -191,24 +266,17 @@ This wrapper bakes in:
 sudo tee /opt/scalyr-agent-2/scalyr >/dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-
 CONFIG="/etc/scalyr-agent-2/agent.json"
 ENVFILE="/etc/scalyr-agent-2/scalyr.env"
 PY="/opt/scalyr-agent-2/venv/bin/python"
-
-# Load secrets if present (SCALYR_API_KEY, optionally SCALYR_SERVER, etc.)
 if [[ -f "$ENVFILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$ENVFILE"
   set +a
 fi
-
-# Suppress the noisy warning:
-# /.../repoze/__init__.py: UserWarning: pkg_resources is deprecated as an API...
+export PIP_DISABLE_PIP_VERSION_CHECK=1
 export PYTHONWARNINGS='ignore:pkg_resources is deprecated as an API:UserWarning'
-
-# Optional: quiet "already running" noise on `start`
 if [[ "${1:-}" == "start" ]]; then
   set +e
   out="$("$PY" -m scalyr_agent.agent_main -c "$CONFIG" "$@" 2>&1)"
@@ -224,7 +292,6 @@ if [[ "${1:-}" == "start" ]]; then
   echo "$out"
   exit 0
 fi
-
 exec "$PY" -m scalyr_agent.agent_main -c "$CONFIG" "$@"
 EOF
 
@@ -233,7 +300,7 @@ sudo chmod 0755 /opt/scalyr-agent-2/scalyr
 
 ### Put it on PATH for humans (and make `sudo scalyr ...` work)
 
-On Rocky, `sudo` often uses a restricted `secure_path` which may **not** include `/usr/local/bin`. The simplest fix is to symlink into `/usr/bin`.
+On Ubuntu, `sudo` often uses a restricted `secure_path` which may **not** include `/usr/local/bin`. The simplest fix is to symlink into `/usr/bin`.
 
 ```bash
 sudo ln -sf /opt/scalyr-agent-2/scalyr /usr/bin/scalyr
@@ -251,14 +318,13 @@ sudo scalyr status -v || true
 
 ---
 
-## 7) Open the syslog ports (if using firewalld)
+## 7) Open the syslog ports (if using UFW)
 
-If this host should accept remote syslog on 514:
+If this host should accept remote syslog on 514 and UFW is active:
 
 ```bash
-sudo firewall-cmd --permanent --add-port=514/tcp
-sudo firewall-cmd --permanent --add-port=514/udp
-sudo firewall-cmd --reload
+# Check if UFW is active
+sudo ufw status | grep -q "^Status: active" && sudo ufw allow 514/tcp && sudo ufw allow 514/udp
 ```
 
 ---
@@ -275,26 +341,17 @@ sudo tee /etc/systemd/system/scalyr-agent-2.service >/dev/null <<'INI'
 Description=Scalyr Agent 2 (venv wrapper)
 After=network-online.target
 Wants=network-online.target
-
 [Service]
 Type=forking
-
-# Wrapper already loads /etc/scalyr-agent-2/scalyr.env, but systemd can too (harmless redundancy)
 EnvironmentFile=-/etc/scalyr-agent-2/scalyr.env
-
 ExecStart=/opt/scalyr-agent-2/scalyr start
 ExecStop=/opt/scalyr-agent-2/scalyr stop
 ExecReload=/opt/scalyr-agent-2/scalyr stop && /opt/scalyr-agent-2/scalyr start
-
-# Helpful: dump verbose agent status into the journal right after starting
 ExecStartPost=/opt/scalyr-agent-2/scalyr status -v
-
 Restart=on-failure
 RestartSec=5s
-
 User=root
 Group=root
-
 [Install]
 WantedBy=multi-user.target
 INI
@@ -311,7 +368,7 @@ sudo systemctl enable --now scalyr-agent-2
 
 ---
 
-## 9) Validate it’s actually working (includes `nc` tests)
+## 9) Validate it's actually working (includes `nc` tests)
 
 ### A) Service state + verbose agent status
 
@@ -326,22 +383,24 @@ sudo scalyr status -v
 sudo ss -luntp | egrep ':(514)\b'
 ```
 
-### C) Send test syslog messages with netcat (the “it just works” tests)
+### C) Send test syslog messages with netcat (the "it just works" tests)
 
 Running the test **on the agent host itself**, using `127.0.0.1`:
 
 **UDP:**
 
 ```bash
-printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' \
-  | nc -u -v 127.0.0.1 514
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '<189>1 %s nc-local FortiGate-40F-SVA - - - msg="local udp test"\n' "${ts}" \
+  | nc -u -v -w1 127.0.0.1 514
 ```
 
 **TCP:**
 
 ```bash
-printf '<189>1 2025-12-17T00:00:00Z nc-local FortiGate-40F-SVA - - - msg="local tcp test"\n' \
-  | nc -v 127.0.0.1 514
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '<189>1 %s nc-local FortiGate-40F-SVA - - - msg="local tcp test"\n' "${ts}" \
+  | nc -v -w1 127.0.0.1 514
 ```
 
 ### D) Watch logs while you send the tests
@@ -371,19 +430,19 @@ logfile = '/etc/scalyr-agent-2/log/fortigate.log'
 
 ## Troubleshooting notes (common gotchas)
 
-### “ERROR: Cannot find command 'git'”
+### "ERROR: Cannot find command 'git'"
 
-You’re installing from a Git tag, so pip shells out to `git`. Fix:
+You're installing from a Git tag, so pip shells out to `git`. Fix:
 
 ```bash
-sudo dnf -y install git
+sudo apt-get install -y git
 command -v git
 git --version
 ```
 
 ### `sudo scalyr ...` says command not found
 
-You likely symlinked only into `/usr/local/bin`. Rocky `sudo` can ignore that path. Fix:
+You likely symlinked only into `/usr/local/bin`. Ubuntu `sudo` can ignore that path. Fix:
 
 ```bash
 sudo ln -sf /opt/scalyr-agent-2/scalyr /usr/bin/scalyr
@@ -392,9 +451,9 @@ sudo command -v scalyr
 
 ### Nothing arrives in `fortigate.log`
 
-- Confirm firewall is open:
+- Confirm firewall is open (if UFW is active):
   ```bash
-  sudo firewall-cmd --list-ports
+  sudo ufw status | grep 514
   ```
 - Confirm the process is listening:
   ```bash
@@ -414,6 +473,16 @@ sudo systemctl restart scalyr-agent-2
 sudo scalyr status -v
 ```
 
+### Installation fails with PEP517/six errors
+
+If you encounter build errors related to `six` or PEP517, ensure you:
+
+1. Pinned pip to 23.3.2
+2. Applied the patches to `pyproject.toml` and `setup.py`
+3. Used `--no-use-pep517` when installing
+
+If issues persist, use the TURBO installer script which handles all of this automatically.
+
 ---
 
 ## Handy one-liners
@@ -425,3 +494,4 @@ sudo scalyr status -v
 # Restart + immediately show recent logs
 sudo systemctl restart scalyr-agent-2 && sudo journalctl -u scalyr-agent-2 -n 200 --no-pager
 ```
+

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#https://gist.github.com/sva-s1/63e5cf6b5eac44e481faf0bb0ec991f7
 set -euo pipefail
 
 # Scalyr Agent 2 (SentinelOne Collector) installer for Rocky Linux 9
