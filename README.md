@@ -54,7 +54,7 @@ Upstream agent code and full documentation live in the official project:
       ┌────────▼────────┐
       │ Collector VM    │
       │  Rocky 9 /      │
-      │  Ubuntu 24.04    │
+      │  Ubuntu 24.04   │
       │                 │
       │  scalyr-agent-2 │
       │  (Python venv)  │
