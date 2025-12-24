@@ -14,17 +14,32 @@ This revision uses a **single `scalyr` control wrapper** that:
 > Want the TLDR? Run the **TURBO installer**:
 >
 > ```bash
+> # Note: Requires 'curl' to be installed
 > sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-ubuntu24-04.sh)"
 > ```
+>
+> The installer will automatically install any missing system dependencies (like `ca-certificates`) using `apt`.
 
 ---
 
 ## 0) Prep (Ubuntu 24.04)
 
+### Prerequisites
+
+- `curl` - Required to download the installer script
+- `apt` - Package manager for installing dependencies
+
+### Install Dependencies
+
 ```bash
 sudo apt-get update -y
 
-# Practical deps:
+# Install required tools if not already present
+if ! command -v curl >/dev/null 2>&1; then
+    sudo apt-get install -y curl
+fi
+
+# Additional dependencies that will be installed automatically if missing:
 # - git: required because pip installs from a Git tag (pip shells out to git)
 # - build tooling: compile wheels if needed on your platform
 # - netcat-openbsd: provides `nc` for the tests

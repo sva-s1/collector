@@ -626,7 +626,7 @@ cat > "${CFG}" <<JSON
   "implicit_metric_monitor": false,
   "implicit_agent_process_metrics_monitor": false,
   "server_attributes": {
-    "serverHost": "localhost"
+    "serverHost": "$(hostname -f 2>/dev/null || hostname)"
   },
   "monitors": [
     {

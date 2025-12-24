@@ -14,17 +14,32 @@ This revision uses a **single `scalyr` control wrapper** that:
 > Want the TLDR? Run the **TURBO installer** (Rocky 9 specific):
 >
 > ```bash
+> # Note: Requires 'curl' to be installed
 > sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-rocky9.sh)"
 > ```
+>
+> The installer will automatically install any missing system dependencies (like `ca-certificates`) using `dnf`.
 
 ---
 
 ## 0) Prep (Rocky 9)
 
+### Prerequisites
+
+- `curl` - Required to download the installer script
+- `dnf` - Package manager for installing dependencies (included in Rocky Linux)
+
+### Install Dependencies
+
 ```bash
 sudo dnf -y update
 
-# Practical deps:
+# Install required tools if not already present
+if ! command -v curl >/dev/null 2>&1; then
+    sudo dnf install -y curl
+fi
+
+# Additional dependencies that will be installed automatically if missing:
 # - git: required because pip installs from a Git tag (pip shells out to git)
 # - build tooling: compile wheels if needed on your platform
 # - nmap-ncat: provides `nc` for the tests

@@ -15,10 +15,11 @@ Field guide and install notes for running **Scalyr Agent 2** as the **SentinelOn
 >
 > ```bash
 > # Auto-detects Ubuntu 22.04, 24.04, or Rocky Linux 9 and runs the appropriate installer
+> # Note: Requires 'curl' to be installed on the system
 > sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup.sh)"
 > ```
 >
-> The auto-selector will install `curl` and `ca-certificates` using your system's package manager, then fetch and run the platform-specific installer with root privileges.
+> The auto-selector will verify and install any missing dependencies (including `ca-certificates`) using your system's package manager, then fetch and run the platform-specific installer with root privileges. Note that `curl` must be installed first to download the initial script.
 
 > [!IMPORTANT]
 > If this guide saves you time, please **star the repo on GitHub** so others can find it more easily.
