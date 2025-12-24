@@ -495,3 +495,5 @@ sudo scalyr status -v
 sudo systemctl restart scalyr-agent-2 && sudo journalctl -u scalyr-agent-2 -n 200 --no-pager
 ```
 
+
+
