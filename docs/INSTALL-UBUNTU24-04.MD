@@ -14,7 +14,7 @@ This revision uses a **single `scalyr` control wrapper** that:
 > Want the TLDR? Run the **TURBO installer**:
 >
 > ```bash
-> sudo apt-get -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/e568ca5c14d1d54099db47c7c4c5c84c/raw/turbo-collector-setup-ubuntu24-04.sh" -o /tmp/turbo-collector-setup-ubuntu24-04.sh && sudo bash /tmp/turbo-collector-setup-ubuntu24-04.sh
+> sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-ubuntu24-04.sh)"
 > ```
 
 ---

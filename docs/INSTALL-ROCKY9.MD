@@ -14,7 +14,7 @@ This revision uses a **single `scalyr` control wrapper** that:
 > Want the TLDR? Run the **TURBO installer** (Rocky 9 specific):
 >
 > ```bash
-> sudo dnf -y install curl ca-certificates >/dev/null && curl -fsSL -L "https://gist.githubusercontent.com/sva-s1/63e5cf6b5eac44e481faf0bb0ec991f7/raw/turbo-collector-setup-rocky9.sh" -o /tmp/turbo-collector-setup-rocky9.sh && sudo bash /tmp/turbo-collector-setup-rocky9.sh
+> sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-rocky9.sh)"
 > ```
 
 ---

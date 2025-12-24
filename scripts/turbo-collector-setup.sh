@@ -30,8 +30,11 @@ detect_os() {
       if [[ "${OS_VERSION_ID:-}" == "24.04" ]]; then
         echo "ubuntu24.04"
         return 0
+      elif [[ "${OS_VERSION_ID:-}" == "22.04" ]]; then
+        echo "ubuntu22.04"
+        return 0
       else
-        die "Unsupported Ubuntu version: ${OS_VERSION_ID:-} (only 24.04 LTS is supported)"
+        die "Unsupported Ubuntu version: ${OS_VERSION_ID:-} (only 22.04 and 24.04 LTS are supported)"
       fi
       ;;
     rocky|rhel|centos|almalinux)
@@ -43,7 +46,7 @@ detect_os() {
       fi
       ;;
     *)
-      die "Unsupported OS: ID='${OS_ID}' VERSION_ID='${OS_VERSION_ID:-}' (supported: Ubuntu 24.04, Rocky Linux 9)"
+      die "Unsupported OS: ID='${OS_ID}' VERSION_ID='${OS_VERSION_ID:-}' (supported: Ubuntu 22.04, 24.04, Rocky Linux 9)"
       ;;
   esac
 }
@@ -102,11 +105,15 @@ main() {
   # Determine which script to fetch and run
   case "${OS_TYPE}" in
     ubuntu24.04)
-      GIST_URL="https://gist.githubusercontent.com/sva-s1/e568ca5c14d1d54099db47c7c4c5c84c/raw/turbo-collector-setup-ubuntu24-04.sh"
+      SCRIPT_URL="https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-ubuntu24-04.sh"
       SCRIPT_NAME="turbo-collector-setup-ubuntu24-04.sh"
       ;;
+    ubuntu22.04)
+      SCRIPT_URL="https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-ubuntu22-04.sh"
+      SCRIPT_NAME="turbo-collector-setup-ubuntu22-04.sh"
+      ;;
     rocky9)
-      GIST_URL="https://gist.githubusercontent.com/sva-s1/63e5cf6b5eac44e481faf0bb0ec991f7/raw/turbo-collector-setup-rocky9.sh"
+      SCRIPT_URL="https://raw.githubusercontent.com/sva-s1/collector/main/scripts/turbo-collector-setup-rocky9.sh"
       SCRIPT_NAME="turbo-collector-setup-rocky9.sh"
       ;;
     *)
@@ -118,8 +125,8 @@ main() {
   echo "Fetching ${OS_TYPE} installer script..."
   SCRIPT_PATH="/tmp/${SCRIPT_NAME}"
 
-  if ! curl -fsSL -L "${GIST_URL}" -o "${SCRIPT_PATH}"; then
-    die "Failed to download installer script from ${GIST_URL}"
+  if ! curl -fsSL -L "${SCRIPT_URL}" -o "${SCRIPT_PATH}"; then
+    die "Failed to download installer script from ${SCRIPT_URL}"
   fi
 
   chmod +x "${SCRIPT_PATH}"
