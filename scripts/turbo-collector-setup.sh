@@ -56,7 +56,7 @@ install_prereqs() {
   local os_type="$1"
 
   case "${os_type}" in
-    ubuntu24.04)
+    ubuntu24.04|ubuntu22.04)
       if ! command -v curl >/dev/null 2>&1 || ! command -v ca-certificates >/dev/null 2>&1; then
         echo "Installing prerequisites (curl, ca-certificates) via apt..."
         export DEBIAN_FRONTEND=noninteractive
