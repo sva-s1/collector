@@ -381,3 +381,4 @@ sudo rm -f /usr/local/bin/scalyr
 ## Support
 
 For support with this installation, please refer to the [Scalyr Agent 2 documentation](https://www.scalyr.com/help/install-agent-linux) or the [SentinelOne Collector documentation](https://community.sentinelone.com/s/).
+

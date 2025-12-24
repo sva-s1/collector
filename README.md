@@ -77,3 +77,4 @@ The **starter `agent.json`** shipped in this repo is configured to:
 - use the **`marketplace-fortinetfortigate-latest`** [OCSF](https://schema.ocsf.io/) parser
 
 You can add more `syslog_monitor` entries for additional products (other firewalls, appliances, etc.); just ensure **each monitor uses a unique port (or port pair)** and distinct `message_log` / `parser` values.
+

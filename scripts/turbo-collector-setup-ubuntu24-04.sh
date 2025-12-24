@@ -862,3 +862,4 @@ echo
 echo "If you edited ${ENVFILE}, restart to apply:"
 echo "  sudo systemctl restart scalyr-agent-2"
 echo
+
