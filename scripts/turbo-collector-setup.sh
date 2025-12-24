@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# https://gist.github.com/sva-s1/de9927ea3429fa800318860a0d32c4a9
 # Auto-detecting installer for SentinelOne Collector (Scalyr Agent 2)
 # Detects OS and runs the appropriate platform-specific installer
 # Author: Steve VanAllen
-# Last Updated: 12-20-25
+# Last Updated: 12-24-25
 
 set -euo pipefail
 

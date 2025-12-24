@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# https://gist.github.com/sva-s1/e568ca5c14d1d54099db47c7c4c5c84c
-# This script intentionally pins a lower version of pip (pip23) to its virtualenv to address the known six/six-moves issue with scalyr-agent-2 install
+# Ubuntu 24.04 installer for SentinelOne Collector (Scalyr Agent 2)
+# Intentionally pins a lower version of pip (pip23) to its virtualenv to address the known six/six-moves issue with scalyr-agent-2 install
 # Author: Steve VanAllen
 # Co-Author: ChatGPT 5.2
-# Last Updated: 12-20-25
+# Last Updated: 12-24-25
 
 set -euo pipefail
 

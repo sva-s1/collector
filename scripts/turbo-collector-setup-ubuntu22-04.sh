@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# https://gist.github.com/sva-s1/[GIST_ID_TO_BE_ADDED]
+# Ubuntu 22.04 installer for SentinelOne Collector (Scalyr Agent 2)
 # Author: Steve VanAllen
-# Last Updated: 12-20-25
+# Last Updated: 12-24-25
 
 set -euo pipefail
 
