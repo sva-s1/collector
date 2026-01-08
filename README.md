@@ -38,7 +38,7 @@ Upstream agent code and full documentation live in the official project:
 - **Install guide (Ubuntu 22.04 LTS)**: end‑to‑end venv + wrapper + systemd + starter `agent.json`  
   → [`docs/INSTALL-UBUNTU22-04.MD`](docs/INSTALL-UBUNTU22-04.MD)
 - **Install guide (air‑gapped / no‑internet)**: prep and offline install flow  
-  → [`docs/INSTALL-AIRGAPPED.MD`](docs/INSTALL-AIRGAPPED.MD)
+  → [`docs/INSTALL-AIRGAPPED.MD`](docs/INSTALL-AIRGAPPED.md)
 - **Upstream agent code, full docs, and changelog**  
   → [`https://github.com/scalyr/scalyr-agent-2`](https://github.com/scalyr/scalyr-agent-2)
 
